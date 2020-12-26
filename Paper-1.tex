@@ -1,0 +1,621 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.20 of 2017/10/04
+%
+\documentclass[runningheads]{llncs}
+%
+\usepackage{graphicx}
+\usepackage{multicol}        % used for the two-column index
+\usepackage{float}
+\usepackage{multirow}
+\usepackage[bottom]{footmisc}% places footnotes at page bottom
+\usepackage{subfig}
+
+\usepackage{newtxtext}       % 
+\usepackage{newtxmath}       % selects Times Roman as basic font
+
+% Used for displaying a sample figure. If possible, figure files should
+% be included in EPS format.
+%
+% If you use the hyperref package, please uncomment the following line
+% to display URLs in blue roman font according to Springer's eBook style:
+% \renewcommand\UrlFont{\color{blue}\rmfamily}
+
+\begin{document}
+%
+\title{Nearest Neighbors via a Hybrid Approach in Large Datasets: A Speed Up}
+%
+%\titlerunning{Abbreviated paper title}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+\author{Y Narasimhulu\inst{1} \and
+Raghunadh Pasunuri\inst{2} \and
+V China Venkaiah\inst{3}}
+%
+\authorrunning{F. Author et al.}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\institute{SCIS, University of Hyderabad, \email{narasimedu@gmail.com} \and
+SCIS, University of Hyderabad, \email{raghupasunuri@gmail.com} \and
+SCIS, University of Hyderabad, \email{venkaiah@hotmail.com}}
+%
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+A Spatial data structure such as $kd$-tree is a proven data structure in searching Nearest Neighbors of a query point. However constructing a $kd$-tree for determining the nearest neighbors becomes a computationally difficult task as the size of the data increases both in dimensions and the number of data points. So, we need a method that overcomes this shortcome. This paper proposes a hybrid algorithm to speed up the process of identifying $k$-nearest neighbors for a given query point $q$. The proposed algorithm uses light-weight coreset algorithm to sample $K$ points. These points are then used as a seed to the $K$-Means clustering algorithm to cluster the data points. The algorithm finally determines the nearest neighbors of a query point by searching the clusters that are closest to the query point. While analyzing the performance of the proposed algorithm, the time consumed for constructing the coreset and $K$-Means algorithms is not taken in to account. This is because these algorithms are used only once. The proposed method is compared with two existing algorithms in the literature. We called these two methods as `general or normal method' and `without using coresets'. The  comparative results prove that the proposed algorithm reduces the time consumed to, generate $kd$-tree and also $K$-Means clustering.
+
+\keywords{Nearest Neighbors  \and $kd$-tree \and Coresets \and $K$-Means \and Clustering.}
+\end{abstract}
+%
+%
+%
+\section{Introduction}
+\label{sec:1}
+In Computational Geometry, objects considered are set of points in Euclidean space. Collection of points in a higher-dimensional space is called multidimensional data, that represent locations and objects in space. Representing multidimensional data and accessing is an important issue in various fields that include computer graphics, computer vision, computational geometry, image processing, machine learning, pattern recognition and more. Number of different representations and methods for accessing multidimensional data were proposed\cite{H.Samet}. Some of these include, Inverted Lists\cite{D.E.Knuth}, Fixed Grid\cite{J.L.Bentley}, Quad Tree\cite{R.A.Finkel}, PR Quad-tree\cite{J.A.Orenstein}, EXCELL\cite{M.Tamminen}, Grid File\cite{J.Nievergelt}.
+
+Machine learning algorithms use multidimensional data to solve problems like classifying the data, predicting the values of dependent variables, infering new knowledge, finding nearest neighbors in a range, and suggesting products to customers. These algorithms can be classified into 4 categories:
+\begin{enumerate}
+	\item{Supervised learning algorithms: These algorithms are given a training set of examples with the correct answers. These algorithms infer new knowledge from the data. This kind of learning is also called as learning from examples. Example algorithms are Find-S, List-then-eliminate, Candidate Elimination, Regression, and Classification.}
+	\item{Unsupervised learning algorithms: These algorithms are given a training set of examples with no responses, but instead the algorithm tries to identify commonalities between the inputs so that inputs that have something similar are categorized together. One example is clustering by $K$-Means algorithm.}
+	\item{Reinforced learning algorithms: They are told only when the answer is wrong but not how to correct it. The algorithm has to find out a way to get the answer right. These algorithms are always monitored and the answers are scored.}
+	\item{Evolutionary learning algorithms: They work on an idea of $fitness$, which corresponds to a score for how good the current solution is. Genetic algorithm is an example of evolutionary learning.}
+\end{enumerate}
+
+This paper concentrates on unsupervised learning which finds $k$-nearest neighbors\cite{J.L.Bentley1} of a query point $q$.   The proposed algorithm analyzes the common properties in the data, categorize the data, and finds the nearest neighbors. The next section presents the tools and their algorithms that are used in the work.
+
+\section{Preliminaries}
+\label{sec:2}
+\subsection{Coresets}
+\label{subsec:1}
+Machine learning algorithms accuracy increases as the input data size increases. Processing a huge data by these algorithms brings a new kind of problem concerning the time complexity. Reducing the data size may cause the loss of valuable information. One of the major challenges for the researchers is, to bound the trade-off between reducing the data size and the loss of valuable information. Coresets are one such way of solving this trade-off problem.
+
+A coreset is a reduced data set which can be used as a proxy for the full data set. Hence, they are known as summaries of the big data available\cite{Olivier Bachem}. Coresets can be computed in linear time and more intricate algorithms can be run on these sets to provide approximate results as a full data set. Models that are trained on these subsets are provably competitive in the results they produce with the models that are trained on full data. Roughly, Coreset is obtained by sampling the data while honoring the distribution.
+
+\begin{table}[!hbt]
+	\caption{Algorithm for Coreset Construction}
+	\label{tab:1}   
+	\begin{tabular}{p{11cm}}
+		\hline\noalign{\smallskip}
+		Algorithm 1: lightwieght-coreset-construction($X$,$K$)\\
+		\noalign{\smallskip}\hline
+		$X$ : Unsupervised complete data set\\
+		$K$ : Number of points to be sampled.
+		\begin{enumerate}
+			\item{$\mu =$ mean of $X$.}
+			\item{for $x \in X$ do}
+			\item[    ]{$q(x)=\frac{1}{2} \frac{1}{|x|} + \frac{1}{2} \frac{d(x,\mu)^2}{\sum_{x'\in X}d(x',\mu)^2}$}
+			\item{$C =$ Sample $K$ weighted points from $X$ where each point $x$ has weight $\frac{1}{K.q(x)}$ and is sampled with probability q(x)}
+			\item{Return set $C$ with $K$ points that were sampled.}
+		\end{enumerate}\\
+		\hline
+	\end{tabular}
+\end{table}
+
+Table \ref{tab:1} contains a procedure\cite{Ashok Suthar} to construct coresets. The algorithm calculates mean of the data and then uses it to compute the distribution $q(x)$ for each point and assigns it as weight to each point. Finally, it samples $K$ weighted points from $X$(complete data set) where each point $x \in X$ has weight $\frac{1}{K.q(x)}$ and is sampled with probability q(x). The function $d(x,\mu)$ is a distance function from $x$ to mean $\mu$. The time complexity of the algorithm is $O(nd)$, where $n$ is the size of the data, $d$ is the dimensions. 
+
+One of the advantages of using coresets is, the size of the coreset is independent to the size of the original data. Added advantage of the algorithm is, it can be implemented with ease. This paper uses light weight coresets construction algorithm for $K$-Means clustering discussed in the section \ref{subsec:2}.
+
+\subsection{$K$-Means}
+\label{subsec:2}
+Unsupervised data does not contain target values, then the task of generalisation becomes difficult and the algorithm has to completely rely on the data itself. The kind of algorithms that rely on data properties to learn are called unsupervised learning algorithms. In the proposed method, $K$-Means\cite{Olivier Bachem} is performed on unsupervised data to form clusters that have similar properties. One aspect to be specified while determining the similarity among the data is the distance measure.. If the Euclidean distance between the points $x \in X$ and $y \in X$ is minimum then they are considered to be similar. The data point $x_i$ is assigned to a cluster $K_j$ when the distance between the point $x_i$ and cluster mean $\mu_j$ is minimum. The objective function to form the clusters is
+
+\[ min \sum_{j=1}^{K} \sum_{i=1}^{n} \sqrt{(x_i - \mu_j)^2} \]
+
+$K$-Means algorithm specified in Table \ref{tab:2} assigns data points to the nearest cluster centers. Using the distance measure and mean, K-Means learns to find the cluster centers. The process of finding best cluster centers starts by selecting them randomly and fine tuning until the cluster centers stop changing. The cluster centers stop changing when the error criterion is minimum, called converging time.
+
+\begin{table}[!hbt]
+	\caption{Algorithm for $K$-Means}
+	\label{tab:2}   
+	\begin{tabular}{p{11cm}}
+		\hline\noalign{\smallskip}
+		Algorithm 2: $K$-Means($X$,$K$,$C$)\\
+		\noalign{\smallskip}\hline
+		$K$ : number of clusters to create.\\
+		$X$ : Unsupervised complete data set.\\
+		$C$ : Initial cluster centers.
+		\begin{enumerate}
+			\item{Associate each point to a cluster center that is closest to it.}
+			\item{For each cluster, move the position of the center to the mean of the points in that cluster.}
+			\item{If the cluster centers did not change then goto step 4 else goto step 1.}
+			\item{Assign classification label to each point and return new cluster centers $C$}
+		\end{enumerate} \\ \hline
+		
+	\end{tabular}
+\end{table}
+The algorithm’s complexity is dependent on initial centroids that are considered. K-Means algorithm is relatively slow, because it has to calculate the Euclidean distance between each cluster center and each data point. When the centres change after an iteration, Euclidean distance has to be recomputed making the algorithm inefficient. The general $K$-Means algorithm is NP-Hard\cite{Meena Mahajana}, which takes exponential time to converge. However, with a fixed `$t$' number of iterations, `$c$' centroids, `$n$' points, and `$d$' dimensions, $K$-Means takes $O(tcnd)$ time. In the proposed work  to reduce the number of iterations for searching the best cluster centroids, we use the data points produced by the coreset construction algorithm  as initial centroids. 
+
+In the proposed algorithm, coresets are not used as the summaries of the whole data but they are used as the initial cluster centers. Coreset points as the initial centroids has taken less time for finding the final clutsers in $K$-Means algorithm. The $K$-Means clustering time comparisons are presented in the results section.
+In order to reduce the time to search for the $k$-closest points to the given query, Quadtree, a spatial data structure, is used.
+
+\subsection{Quadtree and $kd$-tree}
+\label{subsec:3}
+Quadtree\cite{R.A.Finkel} is a hierarchical spatial tree data structure. Quadtree represents two dimensional data on the geometric space by recursively decomposing the space using separators parallel to coordinate axis. The initial decomposed four regions correspond to four children of the root node, hence the term $quad$. Decomposition of the space into regions helps in solving problems efficiently such as, range query, spherical query, and nearest neighbors query. Range query finds all points that are present within a range.  Spherical region query finds all the points that lie within a distance $r$ from query $q$. Nearest neighbour query finds the nearest neighbors of a certain quantity $k$ from the query $q$.
+
+Because of the principle of equal subdivision, the height of the quadtree cannot be estimated as the data may fall more in any of the quadrants. Height of the tree can be in balance only when the data is distributed uniformly. Performance is mostly based on the height of the tree. If tree is skewed the performance degrades. Hence the division point can be a median of all the data or it can be a mid point of the data\cite{Songrit Maneewongvatana}, if the data is known in advance.  
+
+A height balanced quadtree can be constructed in $O(dnlogn)$ runtime, where $d$ is number of dimensions and with $O(n)$ storage. Search in tree take $O(dh)$ run time, where $h$ is the height of the tree. Insertion is restricted to $O(dh)$. It takes more time to re-adjust the tree after deleting the points from it. 
+
+\begin{figure}[!hbt]
+	\centering
+	\includegraphics[scale=.06]{KD-Tree.png}
+	\caption{$kd$-tree for 6 points in the cartesian plane}
+	\label{fig:1}       % Give a unique label
+\end{figure}
+
+The notion of quadtree can be extended to $k$, where $k$ is the number of dimensions and hence is called as a $kd$-tree\cite{Spatial KDTree}. In a 2-dimensional case, where $k=2$, each point has 2 values, $x$-coordinate and $y$-coordinate. In the construction of 2-dimensional tree, the initial split is on $x$-coordinate, next on $y$-coordinate, then again on $x$-coordinate and so on as shown in the Figure \ref{fig:1}. Root of the tree will split the space into two parts left and right subsets of roughly equal size on $x$-axis. The left and right subsets are further split according to $y$-axis and then again those are further split according to the axis until no further split is required. Depth of the tree is also based on which axis we divide on the first split. Another $kd$-tree based searching algorithm\cite{Parikshit Ram} which runs close to $O(logn)$ is proposed, which guarantees a theoretical proof of search accuracy as close as to Randomized Partitioning Tree(RPTree).
+
+The next section presents the proposed algorithm that uses the above mentioned algorithms and data structures in retrieving the closest points to the query.
+
+\section{Proposed Work}
+\label{sec:3}
+In order to seek $k$-nearest neighbors, we may not require the entire data because we are not worried to return all points. Hence we assume that $k<n$. Using this as the driving principle, the proposed algorithm presented in table \ref{tab:3}, considers only a subset of the data. This paper does not propose to classify or try to classify a query point to a particular class but returns its $k$ nearest neighbors. The time complexity of the proposed algorithm is $O(nd)+O(tcnd)+O(dnlogn)$, which is asymptotically equal to $O(dnlogn)$, where d is the number of dimensions and n is the number of points.
+
+\begin{figure}[!b]
+	\includegraphics[scale=.33]{Process.png}
+	\caption{Procedure for $k$-nearest neighbors}
+	\label{fig:2}       % Give a unique label
+\end{figure}
+
+Flow diagram of the entire work is presented in Figure \ref{fig:2}. The process starts by considering unsupervised data and constructing a coreset of size $K$. The value of $K$ decides the number of clusters that are needed to form. It would be better if $K$ is known in prior which helps in producing accurate results. When a wrong $K$ is assumed the results could be wrong. So, the $K$ value for the datasets that were considered in this paper is known in advance.
+
+\begin{table}[!hbt]
+	\caption{Algorithm for $k$-Nearest Neighbors}
+	\label{tab:3}   
+	\begin{tabular}{p{11cm}}
+		\hline\noalign{\smallskip}
+		Algorithm 3: $k$-nearestneighbors($X$,$k$,$K$,$q$)\\
+		\noalign{\smallskip}\hline
+		$k$ : Number of nearest points to be found.\\
+		$X$ : Unsupervised complete data set.\\
+		$K$ : Number of clusters to be created.\\
+		$q$ : Query point.
+		\begin{enumerate}
+			\item{Let $C$ be a set, of $K$ coreset points.}
+			\item[]{$C =$ lightwieght-coreset-construction($X$,$K$)}
+			\item{Using $C$ as the initial centroids, $K$-Means constructs the new centriods that satisfy the criterian function and returns the new centriods.}
+			\item[]{$C=K$-Means($X$,$K$,$C$)}
+			\item{Identify the nearest cluster center from set $C$ to the query point $q$.}
+			\item{Fetch the cluster data and store it in `$x$'.}
+			\item{Construct kd-tree for data $x$ and query the tree with $q$.}
+			\item[]{$tree = $ kd-tree($x$) }
+			\item[]{$distance,knnIndices = $ tree.query($q$) }
+			\item{return $distance,knnIndices$}			
+		\end{enumerate} \\
+		\hline
+	\end{tabular}
+\end{table}
+Using the $K$ points as the initial centroids for $K$-Means, clusters are created. It is observed that time taken for $K$-Means with some random points as initial centroids is much greater than the time taken for $K$-Means with coreset points as initial centroids. The results are shown in section \ref{sec:4}.
+Using the clusters generated by the $K$-Means we find the closest cluster to the query point. The $kd$-tree is constructed using the closest cluster data. The $kd$-tree algorithm generates a tree and this tree is given a query point $q$ and $k$ value to produce the final $k$-nearest points to the query point. In the proposed method, data fed to $kd$-tree algorithm is less when compared with the normal method, hence reducing the time for construction. 
+
+In order to prove the results produced by the proposed method is better, a comparative study has been done by using two other approaches which we called them as `normal method' and ‘without using coresets'. Another comparison is also done to prove that coreset points fed $K$-Means is better than straight forward $K$-Means. It is very clearly depicted that the proposed method outperforms the standard method. 
+
+Next section provides the complete results and a comparative study of the following three methods.
+
+\begin{enumerate}
+	\item{\texttt{Normal method}: Uses $kd$-tree on full data and query it.}
+	\item{\texttt{Without using coresets}: Uses $K$-means, $kd$-tree on clustered data and query the $kd$-tree}
+	\item{\texttt{Proposed method}: Uses $K$-Means using coreset data and kd-tree on cluster data.}
+\end{enumerate}
+
+Normal method does not require $K$-Means hence, $K$-Means comparison for the normal method is not presented.
+
+
+
+\section{Results}
+\label{sec:4}
+
+Algorithms $k$-nearestneighbors($X$,$k$,$K$,$q$), $K$-Means($X$,$K$,$C$), $kd$-tree\cite{Spatial KDTree} were implemeted in python. Details of the datasets\cite{Dataset} that are used for experimentation are given in the Table \ref{tab:4}. 
+\smallskip
+\begin{table}[!hbt]
+	\caption{Datasets and their properties}
+	\label{tab:4}       % Give a unique label
+	\begin{tabular}{p{4cm}p{2.4cm}p{2cm}p{2cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & No. of Dimensions & No. of Instances & No. of Classes  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Breast Cancer Data & 30  & 569 & 2\\
+		Digits Data & 64 & 1797 & 10\\
+		CovType Data & 54  & 581012 & 7\\
+		Smartphone Data & 562  & 10299 & 6 \\
+		Kddcup Data & 36  & 494020 & 23 \\
+		Miniboone Data & 50  & 130062 & 7 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+Comparisons on $kd$-tree construction time, $K$-Means time, input data size initially and at $kd$-tree construction point for all datasets that are present in the table \ref{tab:4} are displayed in the following tables. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for Breast Cancer Data}
+	\label{tab:6}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{Breast Cancer Data} & Without Using Coresets & 0.021596901\\
+		& Proposed Work  & 0.00489233\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for Breast Cancer Data}
+	\label{tab:5}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & KD-Tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{Breast Cancer Data} & Normal Method  & 0.000900756\\
+		& Without Using Coresets & 0.000555496\\
+		& Proposed Work  & 0.000510688\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+
+\begin{table}[!hbt]
+	\caption{Datasize Variation for Breast Cancer Data}
+	\label{tab:7}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Breast Cancer Data& 569  & 438 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+\begin{figure}[!hbt]
+	\subfloat[$kd$-tree construction time comparison]{
+		\includegraphics[scale=.30]{Breast_Cancer_KDTree.png}
+	}
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{Breast_Cancer_KMeans.png}
+	}
+	\centering
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.30]{Breast_Cancer_Data_Datasize.png}
+	}
+	\caption{Comparisons on Breast Cancer Data }
+	\label{fig:3}     
+\end{figure}
+Table \ref{tab:5} presents variatons in the times of constructing $kd$-tree for the three methods. Table \ref{tab:6} presents the $K$-Means time for random points as initial centriods and coreset points as initial centroids. Table \ref{tab:7} displays the initial data size considered and final data size drawn from Breast Cancer Data. Figure \ref{fig:3} is the graphical representation for the tables \ref{tab:5},\ref{tab:6} and \ref{tab:7} provided above. It is clearly observed from the above figure that the proposed algorithm performed better than the other methods. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for Digits Data}
+	\label{tab:9}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{Digits Data} & Without Using Coresets & 0.177046333\\
+		& Proposed Work  & 0.018532348\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}	
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for Digits Data}
+	\label{tab:8}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $kd$-tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{Digits Data} & Normal Method  & 0.002147111\\
+		& Without Using Coresets & 0.000293409\\
+		& Proposed Work  & 0.000220433\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\clearpage
+\begin{table}[!hbt]
+	\caption{Datasize Variation for Digits Data}
+	\label{tab:10}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Digits Data& 1797  & 252 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+\begin{figure}[!hbt]
+
+	\subfloat[$kd$-tree time comparison]{
+		\includegraphics[scale=.30]{Digits_Data_KDTree.png}
+	}  
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{Digits_Data_KMeans.png}
+	}
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.30]{Digits_Data_Datasize.png}
+	}
+	\caption{Comparisons on Digits Data }
+	\label{fig:4}     
+\end{figure}
+
+As in the case of Breast Cancer Data, the tables \ref{tab:8},\ref{tab:11},\ref{tab:14}, \ref{tab:17}, and \ref{tab:20} present the comparison of $kd$-tree construction time on Digits data, Smartphone data, Kddcup data, and Miniboone data respectively.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for CovType Data}
+	\label{tab:12}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{CovType Data} & Without Using Coresets & 58.320359221\\
+		& Proposed Work  & 3.571427582\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for CovType Data}
+	\label{tab:11}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $kd$-tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{CovType Data} & Normal Method  & 2.81545425\\
+		& Without Using Coresets & 0.557287733\\
+		& Proposed Work  & 0.528879423\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}	
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{Datasize Variation for CovType Data}
+	\label{tab:13}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		CovType Data& 581012  & 159981 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{figure}[!hbt]
+	\subfloat[$kd$-tree construction time comparison]{
+		\includegraphics[scale=.30]{CovType_Data_KDTree.png}
+	}  
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{CovType_Data_KMeans.png}
+	}
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.30]{CovType_Data_Datasize.png}
+	}
+	\caption{Comparisons on CovType Data }
+	\label{fig:5}     
+\end{figure}
+
+The tables \ref{tab:9}, \ref{tab:12}, \ref{tab:15}, \ref{tab:18}, and \ref{tab:21} present the comparison of $K$-Means construction time on Digits data, Smartphone data, Kddcup data, and Miniboone data respectively.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for Smartphone Data}
+	\label{tab:15}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{Smartphone Data} & Without Using Coresets & 5.235056832\\
+		& Proposed Work  & 0.746759341\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for Smartphone Data}
+	\label{tab:14}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $kd$-tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{Smartphone Data} & Normal Method  & 0.402041996\\
+		& Without Using Coresets & 0.01072642\\
+		& Proposed Work  & 0.0068364\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}	
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{Datasize Variation for Smartphone Data}
+	\label{tab:16}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Smartphone Data& 10299  & 686 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{figure}[!hbt]
+	\subfloat[$kd$-tree construction time comparison]{
+		\includegraphics[scale=.30]{Smartphone_Data_KDTree.png}
+	}  
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{Smartphone_Data_KMeans.png}
+	}
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.30]{Smartphone_Data_Datasize.png}
+	}
+	\caption{Comparisons on Smartphone Data }
+	\label{fig:6}     
+\end{figure}
+\clearpage
+The tables \ref{tab:10}, \ref{tab:13}, \ref{tab:16}, \ref{tab:19}, and \ref{tab:22} present the comparison of initial data size and final data size for tree construction on Digits data, Smartphone data, Kddcup data, and Miniboone data respectively.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for Kddcup Data}
+	\label{tab:18}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{Kddcup Data} & Without Using Coresets & 51.760765204\\
+		& Proposed Work  & 8.746508095\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for Kddcup Data}
+	\label{tab:17}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $kd$-tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{Kddcup Data} & Normal Method  & 1115.123546068\\
+		& Without Using Coresets & 1071.968181827\\
+		& Proposed Work  & 198.936803207\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}	
+%\vspace{-1em}
+\begin{table}[!hbt]
+	\caption{Datasize Variation for Kddcup Data}
+	\label{tab:19}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Kddcup Data& 494020  & 190107 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+%\vspace{-1em}
+\begin{figure}[!hbt]
+	\subfloat[$kd$-tree construction time comparison]{
+		\includegraphics[scale=.30]{Kdcup_Data_KDTree.png}
+	}  
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{Kdcup_Data_KMeans.png}
+	}
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.30]{Kdcup_Data_Datasize.png}
+	}
+	\caption{Comparisons on Kddcup Data }
+	\label{fig:7}     
+\end{figure}
+
+The figures \ref{fig:4}, \ref{fig:5}, \ref{fig:6}, \ref{fig:7}, and \ref{fig:8} presents the pictorical representation of the comparisons done for Digits data, Smartphone data, Kddcup data, and Miniboone data respectively.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[!hbt]
+	\caption{$K$-Means Construction time for Miniboone Data}
+	\label{tab:21}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $K$-Means Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{2}{*}{Miniboone Data} & Without Using Coresets & 3.630400168\\
+		& Proposed Work  & 1.522944811\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+\begin{table}[!hbt]
+	\caption{$kd$-tree Construction time for Miniboone Data}
+	\label{tab:20}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Name of the Method & $kd$-tree Construction Time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		\multirow{3}{*}{Miniboone Data} & Normal Method  & 0.765435536\\
+		& Without Using Coresets & 0.412943829\\
+		& Proposed Work  & 0.332265506\\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+\begin{table}[!hbt]
+	\caption{Datasize Variation for Miniboone Data}
+	\label{tab:22}       % Give a unique label
+	\begin{tabular}{p{3cm}p{4cm}p{3.4cm}}
+		\hline\noalign{\smallskip}
+		Name of the Dataset & Initial Data size & Data size at search time  \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+		Miniboone Data& 130062  & 85649 \\
+		\noalign{\smallskip}\hline\noalign{\smallskip}
+	\end{tabular}
+\end{table}
+
+\begin{figure}[!hbt]
+	\subfloat[$kd$-tree construction time comparison]{
+		\includegraphics[scale=.30]{Miniboone_Data_KDTree.png}
+	}  
+	\hspace{0mm}
+	\subfloat[$K$-Means time comparison]{
+		\includegraphics[scale=.30]{Miniboone_Data_KMeans.png}
+	}
+	\hspace{0mm}
+	\subfloat[Data size comparison]{
+		\includegraphics[scale=.26]{Miniboone_Data_Datasize.png}
+	}
+	\caption{Comparisons on Kddcup Data }
+	\label{fig:8}     
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Future Work}
+\label{sec:5}
+The methods considered here for comparison have produced same nearest points on all datasets and these were proved to be correct when compared with the ground truth results. Size of the data has been reduced to a good factor but dimensions were not reduced. Building $kd$-tree for higher dimensional data is more complex and time consuming because, $kd$-tree suffers with the curse of dimensionality. If data can be reduced in length and dimensions, then results can be achieved in much lesser time. Algorithm 3 can also be extended to classify the query point $q$. The proposed algorithm can be applied on supervised data. The issue of cluster size being less than $k$ is not addressed in the paper. 
+
+\section{Conclusion}
+\label{sec:6}
+The $kd$-tree is a standard data structure for searching nearest neighbors, yet proves to take more time when the data size increases. This paper proposes a $k$-nearest neighbors algorithm, which reduces the $kd$-tree time by performing two constant operations, coreset construction and $K$-Means. Comparitive results proved that the proposed method has performed better in terms of time to construct $kd$-tree and also to retrieve the nearest neighbors. It also showed that the size of the data for the $kd$-tree is reduced.
+
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+% \bibliographystyle{splncs04}
+% \bibliography{mybibliography}
+%
+%%\begin{thebibliography}{8}
+%\bibitem{ref_article1}
+%Author, F.: Article title. Journal \textbf{2}(5), 99--110 (2016)
+%
+%\bibitem{ref_lncs1}
+%Author, F., Author, S.: Title of a proceedings paper. In: Editor,
+%F., Editor, S. (eds.) CONFERENCE 2016, LNCS, vol. 9999, pp. 1--13.
+%Springer, Heidelberg (2016). \doi{10.10007/1234567890}
+%
+%\bibitem{ref_book1}
+%Author, F., Author, S., Author, T.: Book title. 2nd edn. Publisher,
+%Location (1999)
+%
+%\bibitem{ref_proc1}
+%Author, A.-B.: Contribution title. In: 9th International Proceedings
+%on Proceedings, pp. 1--2. Publisher, Location (2010)
+%
+%\bibitem{ref_url1}
+%LNCS Homepage, \url{http://www.springer.com/lncs}. Last accessed 4
+%Oct 2017
+%\end{thebibliography}
+\input{references}
+\end{document}
